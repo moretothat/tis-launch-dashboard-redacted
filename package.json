@@ -1,0 +1,12 @@
+{
+  "name": "tis-launch-dashboard-redacted",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Thinking In Stories — Launch Dashboard, public preview (synthetic data)",
+  "scripts": {
+    "redact": "node redact.mjs",
+    "dev": "wrangler pages dev . --port 8789",
+    "deploy": "wrangler pages deploy ."
+  }
+}

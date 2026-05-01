@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thinking In Stories — Launch Dashboard (Preview)</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+  :root, [data-theme="dark"] {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232733;
+    --border: #2e3345;
+    --text: #e4e6ef;
+    --text-dim: #8b8fa3;
+    --accent: #6c5ce7;
+    --c2: #74b9ff;
+    --c3: #00b894;
+    --c4: #fdcb6e;
+    --c5: #e17055;
+    --c6: #6c5ce7;
+    --positive: #00b894;
+    --negative: #e17055;
+    --chart-grid: rgba(255,255,255,0.05);
+    --chart-axis: #8b8fa3;
+    --row-hover: rgba(255,255,255,0.02);
+    --shadow: 0 8px 24px rgba(0,0,0,.4);
+  }
+  [data-theme="light"] {
+    --bg: #f7f8fb;
+    --surface: #ffffff;
+    --surface2: #f0f2f7;
+    --border: #e2e5ef;
+    --text: #1a1d27;
+    --text-dim: #5f6576;
+    --accent: #6c5ce7;
+    --c2: #2196f3;
+    --c3: #059669;
+    --c4: #d97706;
+    --c5: #dc2626;
+    --c6: #6c5ce7;
+    --positive: #059669;
+    --negative: #dc2626;
+    --chart-grid: rgba(0,0,0,0.06);
+    --chart-axis: #5f6576;
+    --row-hover: rgba(0,0,0,0.03);
+    --shadow: 0 4px 16px rgba(0,0,0,.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px;
+    transition: background-color .2s ease, color .2s ease;
+  }
+
+  /* Theme toggle */
+  .theme-toggle {
+    display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;
+    font-size:13px; color:var(--text-dim); padding:6px 10px; border-radius:6px;
+    border:1px solid var(--border); background:var(--surface); transition:all .2s;
+  }
+  .theme-toggle:hover { border-color:var(--accent); color:var(--text); }
+  .theme-toggle svg { width:14px; height:14px; }
+  [data-theme="light"] .theme-toggle .moon-icon,
+  [data-theme="dark"] .theme-toggle .sun-icon { display:none; }
+
+  /* Gross/Net segmented toggle */
+  .mode-toggle {
+    display:inline-flex; align-items:center; background:var(--surface);
+    border:1px solid var(--border); border-radius:6px; padding:2px;
+    font-size:12px; font-weight:600;
+  }
+  .mode-toggle button {
+    background:transparent; border:none; color:var(--text-dim);
+    padding:5px 12px; border-radius:4px; cursor:pointer; transition:all .2s;
+    font-size:12px; font-weight:600; letter-spacing:.3px;
+  }
+  .mode-toggle button.active {
+    background:var(--accent); color:#fff;
+  }
+  .mode-toggle button:not(.active):hover { color:var(--text); }
+  .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; flex-wrap:wrap; gap:16px; }
+  .header h1 { font-size:24px; font-weight:700; letter-spacing:-0.5px; }
+  .header h1 span { color:var(--accent); }
+
+  .api-section { display:flex; align-items:center; gap:8px; }
+  .api-section input {
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    padding:8px 12px; border-radius:6px; font-size:13px; font-family:'SF Mono','Fira Code',monospace;
+  }
+  .api-section input::placeholder { color:var(--text-dim); }
+  .btn { background:var(--accent); color:#fff; border:none; padding:8px 16px; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; transition:opacity .2s; }
+  .btn:hover { opacity:.85; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .btn-secondary { background:var(--surface2); border:1px solid var(--border); }
+  .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .status-dot.connected { background:var(--positive); }
+  .status-dot.disconnected { background:var(--negative); }
+
+  .grand-total {
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+    border:1px solid var(--border); border-radius:12px; padding:24px 28px;
+    margin-bottom:24px; display:flex; align-items:center; gap:32px; flex-wrap:wrap;
+    box-shadow: var(--shadow);
+    position:relative; overflow:hidden;
+  }
+  .grand-total::before {
+    content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
+    background: linear-gradient(180deg, var(--c2), var(--c3), var(--c4), var(--c5), var(--c6));
+  }
+  .grand-total .gt-label {
+    font-size:11px; text-transform:uppercase; letter-spacing:1px;
+    color:var(--text-dim); font-weight:600; margin-bottom:6px;
+  }
+  .grand-total .gt-value {
+    font-size:32px; font-weight:700; letter-spacing:-.5px; line-height:1;
+  }
+  .grand-total .gt-sub {
+    font-size:12px; color:var(--text-dim); margin-top:4px;
+  }
+  .grand-total .gt-sep { width:1px; height:48px; background:var(--border); }
+  .grand-total .gt-block { min-width:120px; }
+
+  .summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; margin-bottom:32px; }
+  .summary-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; }
+  .summary-card .label { font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); margin-bottom:8px; }
+  .summary-card .value { font-size:28px; font-weight:700; letter-spacing:-.5px; }
+  .summary-card .sub { font-size:13px; color:var(--text-dim); margin-top:4px; }
+  .summary-card .detail-row { font-size:12px; color:var(--text-dim); margin-top:2px; display:flex; justify-content:space-between; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:12px; font-weight:600; margin-left:8px; }
+  .badge.up { background:rgba(0,184,148,.15); color:var(--positive); }
+  .badge.down { background:rgba(225,112,85,.15); color:var(--negative); }
+
+  .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:32px; }
+  @media(max-width:1000px) { .charts-grid { grid-template-columns:1fr; } }
+  .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; }
+  .chart-card h3 { font-size:15px; font-weight:600; margin-bottom:16px; }
+  .chart-card canvas { width:100%!important; max-height:320px; }
+
+  .view-toggle { display:flex; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:3px; margin-bottom:24px; width:fit-content; }
+  .view-toggle button { background:transparent; border:none; color:var(--text-dim); padding:8px 16px; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer; transition:all .2s; }
+  .view-toggle button.active { background:var(--accent); color:#fff; }
+
+  .transaction-log { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:32px; }
+  .transaction-log > h3 { font-size:15px; font-weight:600; padding:16px 20px; border-bottom:1px solid var(--border); }
+  .transaction-log .section-toggle h3 { padding:0; border-bottom:none; }
+  .log-filters { display:flex; gap:8px; padding:12px 20px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .filter-btn { background:transparent; border:1px solid var(--border); color:var(--text-dim); padding:4px 12px; border-radius:20px; font-size:12px; cursor:pointer; transition:all .2s; }
+  .filter-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(108,92,231,.1); }
+  .log-table { width:100%; border-collapse:collapse; }
+  .log-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); padding:10px 20px; border-bottom:1px solid var(--border); font-weight:500; }
+  .log-table td { padding:10px 20px; font-size:13px; border-bottom:1px solid var(--border); }
+  .log-table tr:last-child td { border-bottom:none; }
+  .log-table tr:hover { background:var(--row-hover); }
+  .cohort-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+  .cohort-badge.c1 { background:rgba(162,155,254,.15); color:#a29bfe; }
+  .cohort-badge.c2 { background:rgba(116,185,255,.15); color:var(--c2); }
+  .cohort-badge.c3 { background:rgba(0,184,148,.15); color:var(--c3); }
+  .cohort-badge.c4 { background:rgba(253,203,110,.15); color:var(--c4); }
+  .cohort-badge.c5 { background:rgba(225,112,85,.15); color:var(--c5); }
+  .cohort-badge.c6 { background:rgba(108,92,231,.15); color:var(--c6); }
+  .tag-early { display:inline-block; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:600; background:rgba(0,184,148,.15); color:var(--c3); margin-left:4px; }
+  .tag-late { display:inline-block; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:600; background:rgba(253,203,110,.15); color:var(--c4); margin-left:4px; }
+  .tag-rebill { display:inline-block; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:600; background:rgba(108,92,231,.15); color:var(--c6); margin-left:4px; }
+  .tag-refund { display:inline-block; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:600; background:rgba(225,112,85,.15); color:var(--negative); margin-left:4px; }
+
+  .config-panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:24px; }
+  .config-panel h3 { font-size:15px; font-weight:600; margin-bottom:12px; }
+  .config-row { display:flex; gap:16px; align-items:end; flex-wrap:wrap; }
+  .config-field label { display:block; font-size:12px; color:var(--text-dim); margin-bottom:4px; }
+  .config-field input, .config-field select { background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:6px; font-size:13px; }
+
+  .pace-bar { display:flex; align-items:center; gap:12px; margin-top:8px; }
+  .pace-track { flex:1; height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+  .pace-fill { height:100%; border-radius:3px; transition:width .5s; }
+  .pace-label { font-size:12px; color:var(--text-dim); white-space:nowrap; }
+
+  .live-indicator { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--positive); font-weight:600; }
+  .live-indicator .pulse { width:8px; height:8px; border-radius:50%; background:var(--positive); animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+  .email-table { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:32px; }
+  .email-table > h3 { font-size:15px; font-weight:600; padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .email-table .section-toggle h3 { padding:0; border-bottom:none; }
+  .email-table table { width:100%; border-collapse:collapse; }
+  .email-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); padding:10px 16px; border-bottom:1px solid var(--border); font-weight:500; position:sticky; top:0; background:var(--surface); }
+  .email-table td { padding:10px 16px; font-size:13px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .email-table tr:last-child td { border-bottom:none; }
+  .email-table tr:hover { background:var(--row-hover); }
+  .email-subject { font-weight:500; }
+  .email-subject a { color:var(--text); text-decoration:none; border-bottom:1px dashed var(--border); }
+  .email-subject a:hover { color:var(--accent); border-color:var(--accent); }
+  .email-stats { font-size:11px; color:var(--text-dim); margin-top:2px; }
+  .email-cell { min-width:180px; }
+  .email-cell.empty { color:var(--text-dim); font-style:italic; opacity:.4; }
+  .email-icon { display:inline-block; width:16px; height:16px; background:var(--accent); border-radius:3px; color:#fff; font-size:9px; font-weight:700; text-align:center; line-height:16px; cursor:pointer; vertical-align:middle; margin-right:4px; }
+  .day-label-col { white-space:nowrap; font-weight:600; color:var(--text-dim); min-width:60px; }
+  .revenue-cell { font-family:'SF Mono','Fira Code',monospace; font-size:12px; white-space:nowrap; }
+
+  /* Pinned tooltip overlay */
+  .pinned-tooltip {
+    position:absolute; z-index:1000; background:var(--surface); border:1px solid var(--border);
+    border-radius:8px; padding:12px 16px; box-shadow:0 8px 24px rgba(0,0,0,.4); max-width:380px;
+    font-size:13px; pointer-events:auto;
+  }
+  .pinned-tooltip .pt-header { font-size:12px; color:var(--text-dim); margin-bottom:8px; font-weight:600; }
+  .pinned-tooltip .pt-row { margin-bottom:4px; }
+  .pinned-tooltip .pt-row .pt-label { color:var(--text-dim); }
+  .pinned-tooltip .pt-email { margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+  .pinned-tooltip .pt-email a {
+    color:var(--accent); text-decoration:none; font-weight:500; display:inline-block; margin-bottom:4px;
+  }
+  .pinned-tooltip .pt-email a:hover { text-decoration:underline; }
+  .pinned-tooltip .pt-email .pt-stats { font-size:11px; color:var(--text-dim); margin-bottom:6px; }
+  .pinned-tooltip .pt-close {
+    position:absolute; top:6px; right:10px; cursor:pointer; color:var(--text-dim); font-size:16px;
+    line-height:1; background:none; border:none; padding:2px;
+  }
+  .pinned-tooltip .pt-close:hover { color:var(--text); }
+
+  /* Collapsible section toggle */
+  .section-toggle {
+    display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;
+    padding:16px 20px; border-bottom:1px solid var(--border);
+  }
+  .section-toggle h3 { font-size:15px; font-weight:600; margin:0; }
+  .section-toggle .toggle-icon { font-size:12px; color:var(--text-dim); transition:transform .2s; }
+  .section-toggle .toggle-icon.open { transform:rotate(90deg); }
+  .section-body.collapsed { display:none; }
+
+  /* Redact toggle in header */
+  .redact-toggle { display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; font-size:13px; color:var(--text-dim); padding:6px 12px; border-radius:6px; border:1px solid var(--border); background:var(--surface); transition:all .2s; }
+  .redact-toggle:hover { border-color:var(--accent); color:var(--text); }
+  .redact-toggle.active { border-color:var(--accent); background:rgba(108,92,231,.15); color:var(--accent); }
+  .redact-toggle input { display:none; }
+  .redact-toggle .redact-check { width:14px; height:14px; border-radius:3px; border:1.5px solid var(--text-dim); display:flex; align-items:center; justify-content:center; font-size:10px; transition:all .2s; }
+  .redact-toggle.active .redact-check { border-color:var(--accent); background:var(--accent); color:#fff; }
+
+  /* Redacted mode — blur sensitive content */
+  body.redacted .redact-dollars { filter:blur(10px); -webkit-filter:blur(10px); pointer-events:none; user-select:none; }
+  body.redacted .redact-name { filter:blur(8px); -webkit-filter:blur(8px); pointer-events:none; user-select:none; }
+  body.redacted .summary-card .value { filter:blur(12px); -webkit-filter:blur(12px); }
+  body.redacted .summary-card .detail-row { filter:blur(8px); -webkit-filter:blur(8px); }
+  body.redacted .summary-card .sub { filter:blur(8px); -webkit-filter:blur(8px); }
+  body.redacted td.revenue-cell { filter:blur(12px); -webkit-filter:blur(12px); }
+  body.redacted .badge { filter:blur(6px); -webkit-filter:blur(6px); }
+  body.redacted .pace-label { filter:blur(6px); -webkit-filter:blur(6px); }
+  body.redacted .pinned-tooltip .pt-row strong { filter:blur(8px); -webkit-filter:blur(8px); }
+  body.redacted .comp-table td:not(.comp-label) { filter:blur(8px); -webkit-filter:blur(8px); }
+
+  /* Cohort comparison table */
+  .comp-section { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:32px; }
+  .comp-table { width:100%; border-collapse:collapse; }
+  .comp-table th { text-align:center; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); padding:12px 16px; border-bottom:1px solid var(--border); font-weight:500; }
+  .comp-table th:first-child { text-align:left; }
+  .comp-table td { padding:10px 16px; font-size:13px; border-bottom:1px solid var(--border); text-align:center; }
+  .comp-table td.comp-label { text-align:left; font-weight:500; color:var(--text-dim); font-size:12px; white-space:nowrap; }
+  .comp-table tr:last-child td { border-bottom:none; }
+  .comp-table tr:hover { background:var(--row-hover); }
+  .comp-table .comp-growth { font-size:11px; font-weight:600; margin-left:4px; }
+  .comp-table .comp-growth.up { color:var(--positive); }
+  .comp-table .comp-growth.down { color:var(--negative); }
+  .comp-table .comp-best { background:rgba(0,184,148,.08); }
+  .comp-separator { border-bottom:2px solid var(--border); }
+  .preview-badge { font-size:11px; padding:5px 10px; border-radius:999px; background:rgba(108,92,231,.12); color:var(--accent); border:1px solid rgba(108,92,231,.35); letter-spacing:.3px; font-weight:500; cursor:help; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Thinking In Stories <span>Launch Dashboard</span></h1>
+  <div class="api-section">
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+      <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <span id="themeLabel">Dark</span>
+    </button>
+    <span style="width:1px;height:20px;background:var(--border);margin:0 4px;"></span>
+    <div class="mode-toggle" id="revenueModeToggle" title="Switch between gross and net revenue">
+      <button class="active" data-mode="gross" onclick="setRevenueMode('gross')">Gross</button>
+      <button data-mode="net" onclick="setRevenueMode('net')">Net</button>
+    </div>
+    <span style="width:1px;height:20px;background:var(--border);margin:0 4px;"></span>
+    <span class="preview-badge" title="All names are initials and dollar amounts are scrambled within ±30% of true values. No real customer data is shipped to the browser.">Preview · synthetic data</span>
+  </div>
+</div>
+
+<div id="grandTotal" class="grand-total"></div>
+<div class="summary-grid" id="summaryGrid"></div>
+
+<div class="comp-section">
+  <div class="section-toggle" onclick="toggleSection('compBody','compToggleIcon')">
+    <span class="toggle-icon" id="compToggleIcon">&#9654;</span>
+    <h3>Cohort Comparison</h3>
+  </div>
+  <div id="compBody" class="section-body collapsed" style="overflow-x:auto;">
+    <table class="comp-table" id="compTable"></table>
+  </div>
+</div>
+
+<div class="view-toggle">
+  <button class="active" onclick="setView('revenue',this)">Cumulative Revenue</button>
+  <button onclick="setView('transactions',this)">Cumulative Sales</button>
+  <button onclick="setView('daily_revenue',this)">Daily Revenue</button>
+  <button onclick="setView('daily_transactions',this)">Daily Sales</button>
+</div>
+
+<div class="charts-grid">
+  <div class="chart-card" style="grid-column:1/-1;position:relative;">
+    <h3 id="mainChartTitle">Cumulative Revenue — All Cohorts Overlaid</h3>
+    <canvas id="mainChart"></canvas>
+    <div id="pinnedTooltip" class="pinned-tooltip" style="display:none;"></div>
+  </div>
+  <div class="chart-card"><h3>Revenue by Day</h3><canvas id="dailyBarChart"></canvas></div>
+  <div class="chart-card"><h3>Transactions by Day</h3><canvas id="dailyTxnChart"></canvas></div>
+</div>
+
+<div class="email-table" id="emailSection" style="display:none;">
+  <div class="section-toggle" onclick="toggleSection('emailBody','emailToggleIcon')">
+    <span class="toggle-icon open" id="emailToggleIcon">&#9654;</span>
+    <h3 style="flex:1;">Launch Email Comparison</h3>
+    <span id="emailStatus" style="font-size:12px;color:var(--text-dim);font-weight:400;"></span>
+  </div>
+  <div id="emailBody" class="section-body" style="overflow-x:auto;">
+    <table>
+      <thead id="emailTableHead"></thead>
+      <tbody id="emailTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="transaction-log">
+  <div class="section-toggle" onclick="toggleSection('logBodyWrapper','logToggleIcon')">
+    <span class="toggle-icon open" id="logToggleIcon">&#9654;</span>
+    <h3>Transaction Log</h3>
+  </div>
+  <div id="logBodyWrapper" class="section-body">
+    <div class="log-filters" id="logFilters"></div>
+    <table class="log-table">
+      <thead><tr>
+        <th>Day</th><th>Date</th><th>Time</th><th>Cohort</th><th>Customer</th><th>Product</th>
+        <th>Initial</th><th>Rebill</th><th>Upgrade</th><th>Total Value</th>
+      </tr></thead>
+      <tbody id="logBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// GLOBALS
+// ═══════════════════════════════════════════
+let COHORT_DATA = {};
+let currentView = 'revenue';
+let currentCohort = null;
+let mainChart, barChart, txnChart;
+let logFilter = 'all';
+let BROADCAST_DATA = {};
+let serverHasKitKey = false;
+let _lastWindowStartIdx = 0;
+let _lastLabels = [];
+let revenueMode = 'gross'; // 'gross' | 'net'
+
+function getStoredMode() {
+  try { return localStorage.getItem('tis_revenue_mode'); } catch { return null; }
+}
+function setStoredMode(m) {
+  try { localStorage.setItem('tis_revenue_mode', m); } catch {}
+}
+function isNet() { return revenueMode === 'net'; }
+
+// Pick the right revenue value from a daily_data entry or totals bucket
+function revOf(obj, cumulative) {
+  if (cumulative) {
+    return isNet() ? (obj.cumulative_net_revenue ?? obj.cumulative_revenue) : obj.cumulative_revenue;
+  }
+  return isNet() ? (obj.net_revenue ?? obj.revenue) : obj.revenue;
+}
+
+// Pick total revenue (from totals / early / late buckets)
+function totalRevOf(t) {
+  if (!t) return 0;
+  return isNet() ? (t.net_revenue ?? t.revenue) : t.revenue;
+}
+function windowRevOf(t) {
+  if (!t) return 0;
+  return isNet() ? (t.window_net_revenue ?? t.window_revenue) : t.window_revenue;
+}
+
+function setRevenueMode(mode) {
+  if (mode !== 'gross' && mode !== 'net') return;
+  revenueMode = mode;
+  setStoredMode(mode);
+  document.querySelectorAll('#revenueModeToggle button').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  updateDashboard();
+}
+
+const COHORT_6_START = '2026-02-16';
+const COHORT_6_END = '2026-03-12';
+
+const COLORS = {
+  cohort_1: {border:'#a29bfe',bg:'rgba(162,155,254,0.1)',bar:'rgba(162,155,254,0.7)'},
+  cohort_2: {border:'#74b9ff',bg:'rgba(116,185,255,0.1)',bar:'rgba(116,185,255,0.7)'},
+  cohort_3: {border:'#00b894',bg:'rgba(0,184,148,0.1)',bar:'rgba(0,184,148,0.7)'},
+  cohort_4: {border:'#fdcb6e',bg:'rgba(253,203,110,0.1)',bar:'rgba(253,203,110,0.7)'},
+  cohort_5: {border:'#e17055',bg:'rgba(225,112,85,0.1)',bar:'rgba(225,112,85,0.7)'},
+  cohort_6: {border:'#6c5ce7',bg:'rgba(108,92,231,0.15)',bar:'rgba(108,92,231,0.7)'},
+};
+
+// ═══════════════════════════════════════════
+// LOAD DATA FROM JSON
+// ═══════════════════════════════════════════
+async function loadData(retries) {
+  retries = retries || 0;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const resp = await fetch('cohort_data.json', {signal: controller.signal});
+    clearTimeout(timeout);
+    const data = await resp.json();
+    COHORT_DATA = {};
+    for (const [key, cohort] of Object.entries(data.cohorts)) {
+      COHORT_DATA[key] = {
+        name: cohort.name,
+        start_date: cohort.start_date,
+        end_date: cohort.end_date,
+        total_days: cohort.total_days,
+        color: COLORS[key]?.border || '#6c5ce7',
+        daily_data: cohort.daily_data.map(d => ({
+          day: d.day, date: d.date, transactions: d.transactions, revenue: d.revenue,
+          cumulative_transactions: d.cumulative_transactions, cumulative_revenue: d.cumulative_revenue,
+          orders: d.orders.map(o => ({
+            name: o.name, product: o.product, initial_amount: o.initial_amount,
+            rebill_amount: o.rebill_amount, upgrade_amount: o.upgrade_amount,
+            total_amount: o.total_amount, time: o.time,
+            is_early_bird: o.is_early_bird, is_straggler: o.is_straggler
+          }))
+        })),
+        early_sales: cohort.early_sales,
+        late_sales: cohort.late_sales,
+        totals: cohort.totals
+      };
+    }
+    updateDashboard();
+  } catch(e) {
+    console.error('Failed to load cohort_data.json:', e);
+    if (retries < 2) { await new Promise(r => setTimeout(r, 1000)); return loadData(retries + 1); }
+  }
+}
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function fmt$(n) { return '$' + n.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}); }
+function fmtK(n) { return n >= 1000 ? '$' + (n/1000).toFixed(1) + 'K' : '$' + n; }
+
+function getActiveCohorts() {
+  const cohorts = {...COHORT_DATA};
+  if (currentCohort) cohorts['current'] = currentCohort;
+  return cohorts;
+}
+
+function getMaxDays(cohorts) {
+  return Math.max(...Object.values(cohorts).map(c => c.total_days));
+}
+
+function cohortColorClass(key) {
+  return key === 'current' ? 'c6' : key.replace('cohort_','c');
+}
+
+/**
+ * Build extended timeline data for a cohort including early + window + late.
+ * Returns { earlyDays: [{day, revenue, transactions, cum_rev, cum_txn}], windowDays: [...], lateDays: [...] }
+ * Early days are numbered -N..-1, window days 1..total_days, late days total_days+1..total_days+M
+ */
+function buildExtendedTimeline(cohort) {
+  const early = cohort.early_sales || {orders:[]};
+  const late = cohort.late_sales || {orders:[]};
+  const startDate = new Date(cohort.start_date + 'T00:00:00');
+
+  // Aggregate early orders by day offset from start
+  const earlyByOffset = {};
+  (early.orders || []).forEach(o => {
+    const d = new Date(o.date + 'T00:00:00');
+    const offset = Math.round((d - startDate) / 86400000); // negative number
+    if (!earlyByOffset[offset]) earlyByOffset[offset] = {revenue:0, transactions:0};
+    const amt = isNet() ? (o.net_amount ?? o.total_amount) : o.total_amount;
+    earlyByOffset[offset].revenue += amt;
+    earlyByOffset[offset].transactions += 1;
+  });
+
+  // Build early days array (sorted by offset, ascending)
+  const earlyOffsets = Object.keys(earlyByOffset).map(Number).sort((a,b)=>a-b);
+  // Fill in from min offset to -1
+  const earlyDays = [];
+  if (earlyOffsets.length > 0) {
+    const minOffset = Math.min(...earlyOffsets, -1);
+    for (let off = minOffset; off < 0; off++) {
+      const data = earlyByOffset[off] || {revenue:0, transactions:0};
+      earlyDays.push({dayLabel: off, revenue: data.revenue, transactions: data.transactions});
+    }
+  }
+
+  // Window days (already in daily_data)
+  const windowDays = cohort.daily_data.map(d => ({
+    dayLabel: d.day,
+    revenue: revOf(d, false),
+    transactions: d.transactions,
+    cumulative_revenue: revOf(d, true),
+    cumulative_transactions: d.cumulative_transactions,
+  }));
+
+  // Aggregate late orders by day offset from start
+  const endDate = new Date(cohort.end_date + 'T00:00:00');
+  const lateByOffset = {};
+  (late.orders || []).forEach(o => {
+    const d = new Date(o.date + 'T00:00:00');
+    const offset = Math.round((d - startDate) / 86400000) + 1; // day number (1-based)
+    if (!lateByOffset[offset]) lateByOffset[offset] = {revenue:0, transactions:0};
+    const amt = isNet() ? (o.net_amount ?? o.total_amount) : o.total_amount;
+    lateByOffset[offset].revenue += amt;
+    lateByOffset[offset].transactions += 1;
+  });
+
+  const totalDays = cohort.total_days;
+  const lateOffsets = Object.keys(lateByOffset).map(Number).filter(n => n > totalDays).sort((a,b)=>a-b);
+  const lateDays = [];
+  if (lateOffsets.length > 0) {
+    const maxOffset = Math.max(...lateOffsets);
+    for (let off = totalDays + 1; off <= maxOffset; off++) {
+      const data = lateByOffset[off] || {revenue:0, transactions:0};
+      lateDays.push({dayLabel: off, revenue: data.revenue, transactions: data.transactions});
+    }
+  }
+
+  // Compute cumulative across early + window + late
+  let cumRev = 0, cumTxn = 0;
+  earlyDays.forEach(d => { cumRev += d.revenue; cumTxn += d.transactions; d.cumulative_revenue = Math.round(cumRev*100)/100; d.cumulative_transactions = cumTxn; });
+  windowDays.forEach(d => { cumRev += d.revenue; cumTxn += d.transactions; d.cumulative_revenue = Math.round(cumRev*100)/100; d.cumulative_transactions = cumTxn; });
+  lateDays.forEach(d => { cumRev += d.revenue; cumTxn += d.transactions; d.cumulative_revenue = Math.round(cumRev*100)/100; d.cumulative_transactions = cumTxn; });
+
+  return {earlyDays, windowDays, lateDays, totalDays};
+}
+
+/**
+ * Build unified x-axis labels and per-cohort data arrays for all charts.
+ * Returns { labels, datasets: {cohortKey: {early:[], window:[], late:[]}}, windowStartIdx, windowEndIdx }
+ */
+function buildUnifiedChartData(dataKey) {
+  const cohorts = getActiveCohorts();
+  const timelines = {};
+  let maxEarlyLen = 0, maxWindowLen = 0, maxLateLen = 0;
+
+  for (const [key, c] of Object.entries(cohorts)) {
+    const tl = buildExtendedTimeline(c);
+    timelines[key] = tl;
+    maxEarlyLen = Math.max(maxEarlyLen, tl.earlyDays.length);
+    maxWindowLen = Math.max(maxWindowLen, tl.windowDays.length);
+    maxLateLen = Math.max(maxLateLen, tl.lateDays.length);
+  }
+
+  // Build labels
+  const labels = [];
+  for (let i = maxEarlyLen; i > 0; i--) labels.push('Early -' + i);
+  for (let i = 1; i <= maxWindowLen; i++) labels.push('Day ' + i);
+  for (let i = 1; i <= maxLateLen; i++) labels.push('Late +' + i);
+
+  const windowStartIdx = maxEarlyLen;          // index of "Day 1"
+  const windowEndIdx = maxEarlyLen + maxWindowLen - 1; // index of last window day
+
+  // Build per-cohort data arrays
+  const datasets = {};
+  for (const [key, c] of Object.entries(cohorts)) {
+    const tl = timelines[key];
+    const arr = new Array(labels.length).fill(null);
+
+    // Early days: right-align to the window start
+    const earlyStartIdx = maxEarlyLen - tl.earlyDays.length;
+    tl.earlyDays.forEach((d, i) => { arr[earlyStartIdx + i] = d[dataKey]; });
+
+    // Window days: start at windowStartIdx
+    tl.windowDays.forEach((d, i) => { arr[windowStartIdx + i] = d[dataKey]; });
+
+    // Late days: start right after the window
+    const lateStartIdx = windowStartIdx + tl.windowDays.length;
+    tl.lateDays.forEach((d, i) => { arr[lateStartIdx + i] = d[dataKey]; });
+
+    datasets[key] = arr;
+  }
+
+  return {labels, datasets, windowStartIdx, windowEndIdx, maxEarlyLen, maxLateLen};
+}
+
+// ═══════════════════════════════════════════
+// SUMMARY CARDS
+// ═══════════════════════════════════════════
+function buildGrandTotal() {
+  const el = document.getElementById('grandTotal');
+  const cohorts = getActiveCohorts();
+  const keys = Object.keys(cohorts);
+  if (!keys.length) { el.innerHTML = ''; return; }
+
+  let totalRev = 0, totalCustomers = 0, totalDays = 0, totalCommish = 0, totalRefunds = 0;
+  for (const c of Object.values(cohorts)) {
+    totalRev += totalRevOf(c.totals);
+    totalCustomers += c.totals.transactions;
+    totalDays += c.total_days;
+    totalCommish += (c.totals.commission || 0);
+    totalRefunds += (c.totals.refunds || 0);
+  }
+  const avgRev = keys.length > 0 ? totalRev / keys.length : 0;
+  const avgRevPerCustomer = totalCustomers > 0 ? totalRev / totalCustomers : 0;
+  const modeLabel = isNet() ? 'Net' : 'Gross';
+
+  const deductionsBlock = isNet() ? `
+    <div class="gt-sep"></div>
+    <div class="gt-block">
+      <div class="gt-label">Deductions</div>
+      <div class="gt-value redact-dollars" style="font-size:22px;">${fmt$(Math.round(totalCommish + totalRefunds))}</div>
+      <div class="gt-sub redact-dollars">${fmt$(Math.round(totalCommish))} fees · ${fmt$(Math.round(totalRefunds))} refunds</div>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="gt-block">
+      <div class="gt-label">All Cohorts — ${modeLabel} Total</div>
+      <div class="gt-value redact-dollars">${fmt$(Math.round(totalRev))}</div>
+      <div class="gt-sub">${keys.length} cohorts</div>
+    </div>
+    <div class="gt-sep"></div>
+    <div class="gt-block">
+      <div class="gt-label">Total Customers</div>
+      <div class="gt-value redact-dollars">${totalCustomers.toLocaleString()}</div>
+      <div class="gt-sub redact-dollars">${fmt$(Math.round(avgRevPerCustomer))} avg / customer</div>
+    </div>
+    <div class="gt-sep"></div>
+    <div class="gt-block">
+      <div class="gt-label">Avg Revenue / Cohort</div>
+      <div class="gt-value redact-dollars">${fmt$(Math.round(avgRev))}</div>
+      <div class="gt-sub">${totalDays} total enrollment days</div>
+    </div>
+    ${deductionsBlock}
+  `;
+}
+
+function buildSummaryCards() {
+  const grid = document.getElementById('summaryGrid');
+  const cohorts = getActiveCohorts();
+  let html = '';
+
+  for (const [key, c] of Object.entries(cohorts)) {
+    const isCurrent = key === 'current';
+    const early = c.early_sales || {transactions:0,revenue:0};
+    const late = c.late_sales || {transactions:0,revenue:0};
+    const tot = c.totals;
+
+    const earlyRev = totalRevOf(early);
+    const lateRev = totalRevOf(late);
+    html += `
+      <div class="summary-card" style="border-top:3px solid ${c.color||'var(--accent)'}">
+        <div class="label">${c.name}${isCurrent ? ' <span class="live-indicator"><span class="pulse"></span>LIVE</span>' : ''}</div>
+        <div class="value">${fmt$(totalRevOf(tot))}</div>
+        <div class="sub">${tot.transactions} customers &middot; ${c.total_days}-day window</div>
+        ${early.transactions > 0 ? `<div class="detail-row"><span>Early birds</span><span>${early.transactions} sales &middot; ${fmt$(earlyRev)}</span></div>` : ''}
+        <div class="detail-row"><span>Window</span><span>${tot.window_transactions} sales &middot; ${fmt$(windowRevOf(tot))}</span></div>
+        ${late.transactions > 0 ? `<div class="detail-row"><span>Late sales</span><span>${late.transactions} sales &middot; ${fmt$(lateRev)}</span></div>` : ''}
+      </div>`;
+  }
+
+  grid.innerHTML = html;
+
+  // Collapsible all-comparisons row
+  let expandHtml = '';
+  if (currentCohort) {
+    const today = new Date().toISOString().slice(0,10);
+    const currentDay = currentCohort.daily_data.filter(d => d.date <= today).length;
+    const cd = currentCohort.daily_data[Math.min(currentDay-1, currentCohort.daily_data.length-1)];
+    if (cd) {
+      let compCards = '';
+      for (const [key, c] of Object.entries(COHORT_DATA)) {
+        const comp = c.daily_data[Math.min(currentDay-1, c.daily_data.length-1)];
+        if (!comp) continue;
+        const diff = cd.cumulative_revenue - comp.cumulative_revenue;
+        const pct = comp.cumulative_revenue > 0 ? ((diff/comp.cumulative_revenue)*100).toFixed(0) : 0;
+        const up = diff >= 0;
+        compCards += `
+          <div class="summary-card">
+            <div class="label">vs ${c.name} (Day ${currentDay})</div>
+            <div class="value">${up?'+':''}${fmt$(Math.abs(diff))}
+              <span class="badge ${up?'up':'down'}">${up?'+':''}${pct}%</span>
+            </div>
+            <div class="sub">You: ${fmt$(cd.cumulative_revenue)} &middot; ${c.name}: ${fmt$(comp.cumulative_revenue)}</div>
+            <div class="pace-bar">
+              <div class="pace-track"><div class="pace-fill" style="width:${Math.min(100,(cd.cumulative_revenue/c.totals.revenue)*100)}%;background:${up?'var(--positive)':'var(--negative)'};"></div></div>
+              <span class="pace-label">${Math.round((cd.cumulative_revenue/c.totals.revenue)*100)}% of ${c.name} final</span>
+            </div>
+          </div>`;
+      }
+
+      if (compCards) {
+        expandHtml = `
+          <div id="comparisonToggle" style="margin-bottom:16px;">
+            <button class="btn btn-secondary" onclick="toggleComparisons()" style="font-size:12px;padding:6px 14px;">
+              <span id="compToggleIcon">&#9654;</span> All Cohort Comparisons
+            </button>
+          </div>
+          <div id="comparisonRow" class="summary-grid" style="display:none;margin-bottom:32px;">
+            ${compCards}
+          </div>`;
+      }
+    }
+  }
+
+  // Insert the collapsible section after the summary grid
+  const existingToggle = document.getElementById('comparisonToggle');
+  const existingRow = document.getElementById('comparisonRow');
+  if (existingToggle) existingToggle.remove();
+  if (existingRow) existingRow.remove();
+  if (expandHtml) {
+    grid.insertAdjacentHTML('afterend', expandHtml);
+  }
+}
+
+function toggleComparisons() {
+  const row = document.getElementById('comparisonRow');
+  const icon = document.getElementById('compToggleIcon');
+  if (row.style.display === 'none') {
+    row.style.display = '';
+    icon.innerHTML = '&#9660;';
+  } else {
+    row.style.display = 'none';
+    icon.innerHTML = '&#9654;';
+  }
+}
+
+function buildComparisonTable() {
+  const table = document.getElementById('compTable');
+  const cohorts = getActiveCohorts();
+  const keys = Object.keys(cohorts);
+  if (keys.length < 2) { table.innerHTML = ''; return; }
+
+  // Compute metrics for each cohort
+  const metrics = {};
+  for (const [key, c] of Object.entries(cohorts)) {
+    const tot = c.totals;
+    const early = c.early_sales || {transactions:0, revenue:0, net_revenue:0};
+    const late = c.late_sales || {transactions:0, revenue:0, net_revenue:0};
+    const dailyRevenues = c.daily_data.map(d => revOf(d, false));
+    const peakDayRev = Math.max(...dailyRevenues);
+    const peakDayIdx = dailyRevenues.indexOf(peakDayRev);
+    const day1Rev = c.daily_data[0] ? revOf(c.daily_data[0], false) : 0;
+    const day1Txn = c.daily_data[0]?.transactions || 0;
+    const totalR = totalRevOf(tot);
+    const windowR = windowRevOf(tot);
+    const revPerCustomer = tot.transactions > 0 ? totalR / tot.transactions : 0;
+    const revPerDay = c.total_days > 0 ? windowR / c.total_days : 0;
+    metrics[key] = {
+      totalRevenue: totalR,
+      windowRevenue: windowR,
+      totalCustomers: tot.transactions,
+      windowCustomers: tot.window_transactions,
+      revPerCustomer: revPerCustomer,
+      revPerDay: revPerDay,
+      windowDays: c.total_days,
+      day1Revenue: day1Rev,
+      day1Customers: day1Txn,
+      peakDayRevenue: peakDayRev,
+      peakDayNum: peakDayIdx + 1,
+      earlyCustomers: early.transactions,
+      earlyRevenue: totalRevOf(early),
+      lateCustomers: late.transactions,
+      lateRevenue: totalRevOf(late),
+      commission: tot.commission || 0,
+      refunds: tot.refunds || 0,
+      dateRange: c.start_date + ' to ' + c.end_date,
+    };
+  }
+
+  // Helper to compute growth from previous cohort
+  function growthBadge(val, prevVal) {
+    if (prevVal == null || prevVal === 0) return '';
+    const pct = ((val - prevVal) / Math.abs(prevVal) * 100).toFixed(0);
+    const up = val >= prevVal;
+    return `<span class="comp-growth ${up?'up':'down'}">${up?'+':''}${pct}%</span>`;
+  }
+
+  // Find best value for highlighting
+  function bestIdx(vals, higher) {
+    let best = higher ? -Infinity : Infinity;
+    let idx = -1;
+    vals.forEach((v, i) => {
+      if (v != null && ((higher && v > best) || (!higher && v < best))) { best = v; idx = i; }
+    });
+    return idx;
+  }
+
+  // Build rows
+  const rows = [
+    {label: 'Date Range', key: 'dateRange', fmt: v => `<span style="font-size:11px;">${v}</span>`, noBest: true},
+    {label: 'Window Length', key: 'windowDays', fmt: v => v + ' days', noBest: true},
+    {label: 'Total Revenue', key: 'totalRevenue', fmt: v => fmt$(v), higher: true, separator: true},
+    {label: 'Window Revenue', key: 'windowRevenue', fmt: v => fmt$(v), higher: true},
+    {label: 'Total Customers', key: 'totalCustomers', fmt: v => v, higher: true},
+    {label: 'Rev / Customer', key: 'revPerCustomer', fmt: v => fmt$(Math.round(v)), higher: true},
+    {label: 'Rev / Day', key: 'revPerDay', fmt: v => fmt$(Math.round(v)), higher: true},
+    {label: 'Launch Day Revenue', key: 'day1Revenue', fmt: v => fmt$(v), higher: true, separator: true},
+    {label: 'Launch Day Customers', key: 'day1Customers', fmt: v => v, higher: true},
+    {label: 'Peak Day Revenue', key: 'peakDayRevenue', fmt: v => fmt$(v), higher: true},
+    {label: 'Peak Day #', key: 'peakDayNum', fmt: v => 'Day ' + v, noBest: true},
+    {label: 'Early Bird Customers', key: 'earlyCustomers', fmt: v => v, noBest: true, separator: true},
+    {label: 'Early Bird Revenue', key: 'earlyRevenue', fmt: v => fmt$(v), noBest: true},
+    {label: 'Late Customers', key: 'lateCustomers', fmt: v => v, noBest: true},
+    {label: 'Late Revenue', key: 'lateRevenue', fmt: v => fmt$(v), noBest: true},
+    {label: 'Fees / Commissions', key: 'commission', fmt: v => v > 0 ? fmt$(v) : '—', higher: false, separator: true},
+    {label: 'Refunds', key: 'refunds', fmt: v => v > 0 ? fmt$(v) : '—', higher: false},
+  ];
+
+  let html = '<thead><tr><th></th>';
+  for (const key of keys) {
+    const c = cohorts[key];
+    const color = COLORS[key]?.border || '#6c5ce7';
+    html += `<th style="border-bottom:3px solid ${color};">${c.name}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+
+  for (const row of rows) {
+    const vals = keys.map(k => metrics[k][row.key]);
+    const best = row.noBest ? -1 : bestIdx(vals, row.higher);
+    html += `<tr${row.separator ? ' class="comp-separator"' : ''}>`;
+    html += `<td class="comp-label">${row.label}</td>`;
+    keys.forEach((k, i) => {
+      const v = vals[i];
+      const prevV = i > 0 ? vals[i-1] : null;
+      const growth = (!row.noBest && prevV != null) ? growthBadge(v, prevV) : '';
+      const bestClass = (i === best) ? ' comp-best' : '';
+      html += `<td class="${bestClass}">${row.fmt(v)}${growth}</td>`;
+    });
+    html += '</tr>';
+  }
+
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// THEME (light/dark)
+// ═══════════════════════════════════════════
+function getStoredTheme() {
+  try { return localStorage.getItem('tis_theme'); } catch { return null; }
+}
+function setStoredTheme(t) {
+  try { localStorage.setItem('tis_theme', t); } catch {}
+}
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const label = document.getElementById('themeLabel');
+  if (label) label.textContent = theme === 'light' ? 'Light' : 'Dark';
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  setStoredTheme(next);
+  // Rebuild charts so they pick up the new CSS variable colors
+  if (mainChart || barChart || txnChart) {
+    buildMainChart();
+    buildBarChart();
+    buildTxnChart();
+  }
+}
+function initTheme() {
+  const stored = getStoredTheme();
+  const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  const initial = stored || (prefersLight ? 'light' : 'dark');
+  applyTheme(initial);
+}
+initTheme();
+
+let redactMode = false;
+function toggleRedact() {
+  redactMode = !redactMode;
+  document.body.classList.toggle('redacted', redactMode);
+  document.getElementById('redactToggle').classList.toggle('active', redactMode);
+  document.getElementById('redactCheck').textContent = redactMode ? '✓' : '';
+  // Rebuild charts so Y-axis ticks get redacted
+  buildMainChart();
+  buildBarChart();
+  buildTxnChart();
+}
+
+function toggleSection(bodyId, iconId) {
+  const body = document.getElementById(bodyId);
+  const icon = document.getElementById(iconId);
+  if (body.classList.contains('collapsed')) {
+    body.classList.remove('collapsed');
+    icon.classList.add('open');
+  } else {
+    body.classList.add('collapsed');
+    icon.classList.remove('open');
+  }
+}
+
+// ═══════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════
+
+/** Annotation config for enrollment window highlight band + email markers */
+function windowAnnotation(windowStartIdx, windowEndIdx, labels) {
+  const emailAnnotations = labels ? buildEmailAnnotations(labels, windowStartIdx) : {};
+  return {
+    annotation: {
+      annotations: {
+        windowBand: {
+          type: 'box',
+          xMin: windowStartIdx - 0.5,
+          xMax: windowEndIdx + 0.5,
+          backgroundColor: 'rgba(108,92,231,0.06)',
+          borderColor: 'rgba(108,92,231,0.25)',
+          borderWidth: 1,
+          borderDash: [4,4],
+          label: {
+            display: true,
+            content: 'Enrollment Window',
+            position: 'start',
+            color: 'rgba(108,92,231,0.6)',
+            font: {size:11, weight:'600'},
+            padding: 4,
+          }
+        },
+        ...emailAnnotations,
+      }
+    }
+  };
+}
+
+/** Shared x-axis tick styling: dim the early/late labels */
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function chartGridColor() { return cssVar('--chart-grid'); }
+function chartAxisColor() { return cssVar('--chart-axis'); }
+function chartAxisDimColor() {
+  const axis = chartAxisColor();
+  // Return a 40% opacity version — works for both hex and rgb colors
+  if (axis.startsWith('#')) {
+    const hex = axis.slice(1);
+    const r = parseInt(hex.slice(0,2), 16);
+    const g = parseInt(hex.slice(2,4), 16);
+    const b = parseInt(hex.slice(4,6), 16);
+    return `rgba(${r},${g},${b},0.4)`;
+  }
+  return axis;
+}
+
+function xAxisConfig(labels, windowStartIdx, windowEndIdx) {
+  return {
+    grid: {color: chartGridColor()},
+    ticks: {
+      color: (ctx) => {
+        const idx = ctx.index;
+        if (idx < windowStartIdx || idx > windowEndIdx) return chartAxisDimColor();
+        return chartAxisColor();
+      },
+      font: (ctx) => {
+        const idx = ctx.index;
+        if (idx < windowStartIdx || idx > windowEndIdx) return {size:10, style:'italic'};
+        return {size:12};
+      },
+      maxRotation: 45,
+      autoSkip: true,
+      maxTicksLimit: 30,
+    }
+  };
+}
+
+function buildMainChart() {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  const cohorts = getActiveCohorts();
+  const isRev = currentView.includes('revenue');
+  const dataKey = currentView === 'revenue' ? 'cumulative_revenue'
+    : currentView === 'transactions' ? 'cumulative_transactions'
+    : currentView === 'daily_revenue' ? 'revenue' : 'transactions';
+
+  const unified = buildUnifiedChartData(dataKey);
+  const {labels, datasets: rawData, windowStartIdx, windowEndIdx} = unified;
+  _lastWindowStartIdx = windowStartIdx;
+  _lastLabels = labels;
+
+  const datasets = [];
+  for (const [key, c] of Object.entries(cohorts)) {
+    const col = COLORS[key] || COLORS.current;
+    const data = rawData[key];
+
+    // For line charts, we want a solid line in the window, dashed in early/late
+    // Chart.js segment styling handles this
+    datasets.push({
+      label: c.name, data, borderColor: col.border, backgroundColor: col.bg,
+      borderWidth: key==='current'?3:2, pointRadius: (ctx) => {
+        const idx = ctx.dataIndex;
+        if (data[idx] === null) return 0;
+        if (idx < windowStartIdx || idx > windowEndIdx) return 3;
+        return key==='current'?4:2;
+      },
+      pointStyle: (ctx) => {
+        const idx = ctx.dataIndex;
+        if (idx < windowStartIdx || idx > windowEndIdx) return 'triangle';
+        return 'circle';
+      },
+      pointHoverRadius:6, fill:key==='current', tension:.3, spanGaps:false,
+      segment: {
+        borderDash: (ctx) => {
+          const idx = ctx.p0DataIndex;
+          // Dashed in early/late zones
+          if (idx < windowStartIdx - 1 || idx >= windowEndIdx) return [6,3];
+          // Transition from early to window
+          if (idx === windowStartIdx - 1) return [6,3];
+          return undefined;
+        },
+        borderColor: (ctx) => {
+          const idx = ctx.p0DataIndex;
+          if (idx < windowStartIdx || idx > windowEndIdx) return col.border + '80'; // semi-transparent
+          return col.border;
+        }
+      }
+    });
+  }
+
+  if (mainChart) mainChart.destroy();
+  dismissPinnedTooltip();
+  const titles = {revenue:'Cumulative Revenue',transactions:'Cumulative Sales',daily_revenue:'Daily Revenue',daily_transactions:'Daily Sales'};
+  document.getElementById('mainChartTitle').textContent = titles[currentView] + ' — All Cohorts Overlaid';
+
+  mainChart = new Chart(ctx, {
+    type:'line', data:{labels,datasets},
+    options:{
+      responsive:true, interaction:{mode:'index',intersect:false},
+      onClick:(event, elements, chart) => {
+        const points = chart.getElementsAtEventForMode(event, 'index', {intersect:false}, false);
+        if (points.length > 0) {
+          const idx = points[0].index;
+          showPinnedTooltip(chart, idx, points, isRev);
+        }
+      },
+      plugins:{
+        tooltip:{callbacks:{
+          label:ctx=>{const v=ctx.parsed.y; if(v===null) return null; return ctx.dataset.label+': '+(redactMode?'•••':isRev?fmt$(v):v);},
+          afterBody:(tooltipItems)=>{
+            if (!tooltipItems.length || !Object.keys(BROADCAST_DATA).length) return '';
+            const idx = tooltipItems[0].dataIndex;
+            const lines = [];
+            const allCohorts = getActiveCohorts();
+            for (const [key, broadcasts] of Object.entries(BROADCAST_DATA)) {
+              const cohortName = allCohorts[key]?.name || key;
+              (broadcasts||[]).forEach(b => {
+                const xIdx = windowStartIdx + (b.day - 1);
+                if (xIdx === idx) lines.push('✉ ' + cohortName + ': ' + b.subject);
+              });
+            }
+            return lines.length ? '\n' + lines.join('\n') : '';
+          }
+        }},
+        legend:{labels:{color:chartAxisColor(),usePointStyle:true,pointStyle:'circle'}},
+        ...windowAnnotation(windowStartIdx, windowEndIdx, labels),
+      },
+      scales:{
+        x: xAxisConfig(labels, windowStartIdx, windowEndIdx),
+        y:{grid:{color:chartGridColor()},ticks:{color:chartAxisColor(),callback:v=>redactMode?'•••':isRev?fmtK(v):v}}
+      }
+    }
+  });
+}
+
+function buildBarChart() {
+  const ctx = document.getElementById('dailyBarChart').getContext('2d');
+  const cohorts = getActiveCohorts();
+  const unified = buildUnifiedChartData('revenue');
+  const {labels, datasets: rawData, windowStartIdx, windowEndIdx} = unified;
+
+  const datasets = [];
+  for (const [key, c] of Object.entries(cohorts)) {
+    const col = COLORS[key] || COLORS.current;
+    const data = rawData[key].map(v => v === null ? 0 : v);
+    // Per-bar colors: dimmed for early/late
+    const bgColors = data.map((v, i) => {
+      if (i < windowStartIdx || i > windowEndIdx) return col.bar.replace('0.7', '0.3');
+      return col.bar;
+    });
+    datasets.push({label:c.name, data, backgroundColor:bgColors, borderRadius:3});
+  }
+
+  if (barChart) barChart.destroy();
+  barChart = new Chart(ctx, {
+    type:'bar', data:{labels,datasets},
+    options:{responsive:true,
+      plugins:{
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+(redactMode?'•••':fmt$(ctx.parsed.y))}},
+        legend:{labels:{color:chartAxisColor(),usePointStyle:true,pointStyle:'circle'}},
+        ...windowAnnotation(windowStartIdx, windowEndIdx, labels),
+      },
+      scales:{
+        x: xAxisConfig(labels, windowStartIdx, windowEndIdx),
+        y:{grid:{color:chartGridColor()},ticks:{color:chartAxisColor(),callback:v=>redactMode?'•••':fmtK(v)}}
+      }
+    }
+  });
+}
+
+function buildTxnChart() {
+  const ctx = document.getElementById('dailyTxnChart').getContext('2d');
+  const cohorts = getActiveCohorts();
+  const unified = buildUnifiedChartData('transactions');
+  const {labels, datasets: rawData, windowStartIdx, windowEndIdx} = unified;
+
+  const datasets = [];
+  for (const [key, c] of Object.entries(cohorts)) {
+    const col = COLORS[key] || COLORS.current;
+    const data = rawData[key].map(v => v === null ? 0 : v);
+    const bgColors = data.map((v, i) => {
+      if (i < windowStartIdx || i > windowEndIdx) return col.bar.replace('0.7', '0.3');
+      return col.bar;
+    });
+    datasets.push({label:c.name, data, backgroundColor:bgColors, borderRadius:3});
+  }
+
+  if (txnChart) txnChart.destroy();
+  txnChart = new Chart(ctx, {
+    type:'bar', data:{labels,datasets},
+    options:{responsive:true,
+      plugins:{
+        legend:{labels:{color:chartAxisColor(),usePointStyle:true,pointStyle:'circle'}},
+        ...windowAnnotation(windowStartIdx, windowEndIdx, labels),
+      },
+      scales:{
+        x: xAxisConfig(labels, windowStartIdx, windowEndIdx),
+        y:{grid:{color:chartGridColor()},ticks:{color:chartAxisColor(),callback:v=>redactMode?'•••':v}}
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════
+// TRANSACTION LOG
+// ═══════════════════════════════════════════
+function buildLogFilters() {
+  const container = document.getElementById('logFilters');
+  let html = '<button class="filter-btn active" onclick="filterLog(\'all\',this)">All</button>';
+  for (const key of Object.keys(COHORT_DATA)) {
+    html += `<button class="filter-btn" onclick="filterLog('${key}',this)">${COHORT_DATA[key].name}</button>`;
+  }
+  if (currentCohort) html += `<button class="filter-btn" onclick="filterLog('current',this)">Current</button>`;
+  container.innerHTML = html;
+}
+
+function buildTransactionLog() {
+  const tbody = document.getElementById('logBody');
+  const cohorts = getActiveCohorts();
+  const allRows = [];
+
+  const orderTotal = (o) => isNet() ? (o.net_amount ?? o.total_amount) : o.total_amount;
+  for (const [key, c] of Object.entries(cohorts)) {
+    // Window orders
+    c.daily_data.forEach(day => {
+      day.orders.forEach(o => {
+        allRows.push({
+          cohortKey:key, cohortName:c.name, day:'Day '+day.day, date:day.date,
+          time:o.time, name:o.name, product:o.product,
+          initial:o.initial_amount, rebill:o.rebill_amount, upgrade:o.upgrade_amount,
+          total:orderTotal(o), refund:o.refund_amount||0, tag:''
+        });
+      });
+    });
+    if (c.early_sales) {
+      c.early_sales.orders.forEach(o => {
+        allRows.push({
+          cohortKey:key, cohortName:c.name, day:'Early', date:o.date,
+          time:o.time, name:o.name, product:o.product,
+          initial:o.initial_amount, rebill:o.rebill_amount, upgrade:o.upgrade_amount,
+          total:orderTotal(o), refund:o.refund_amount||0, tag:'early'
+        });
+      });
+    }
+    if (c.late_sales) {
+      c.late_sales.orders.forEach(o => {
+        allRows.push({
+          cohortKey:key, cohortName:c.name, day:'Late', date:o.date,
+          time:o.time, name:o.name, product:o.product,
+          initial:o.initial_amount, rebill:o.rebill_amount, upgrade:o.upgrade_amount,
+          total:orderTotal(o), refund:o.refund_amount||0, tag:'late'
+        });
+      });
+    }
+  }
+
+  allRows.sort((a,b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.time.localeCompare(a.time);
+  });
+
+  const filtered = logFilter === 'all' ? allRows : allRows.filter(r => r.cohortKey === logFilter);
+
+  let html = '';
+  filtered.forEach(r => {
+    const cc = cohortColorClass(r.cohortKey);
+    const tagHtml = (r.tag === 'early' ? '<span class="tag-early">EARLY</span>'
+      : r.tag === 'late' ? '<span class="tag-late">LATE</span>' : '')
+      + (r.refund > 0 ? '<span class="tag-refund">REFUND</span>' : '');
+    const rebillHtml = r.rebill > 0 ? `<span class="tag-rebill">+${fmt$(r.rebill)}</span>` : '';
+    const upgradeHtml = r.upgrade > 0 ? `<span class="tag-rebill">+${fmt$(r.upgrade)} upgrade</span>` : '';
+    html += `<tr>
+      <td>${r.day} ${tagHtml}</td>
+      <td>${r.date}</td>
+      <td>${r.time}</td>
+      <td><span class="cohort-badge ${cc}">${r.cohortName}</span></td>
+      <td class="redact-name">${r.name}</td>
+      <td>${r.product}</td>
+      <td class="redact-dollars">${fmt$(r.initial)}</td>
+      <td class="redact-dollars">${r.rebill > 0 ? fmt$(r.rebill) : '-'}</td>
+      <td class="redact-dollars">${r.upgrade > 0 ? fmt$(r.upgrade) : '-'}</td>
+      <td class="redact-dollars"><strong>${fmt$(r.total)}</strong></td>
+    </tr>`;
+  });
+
+  if (!filtered.length) html = '<tr><td colspan="10" style="text-align:center;color:var(--text-dim);padding:32px;">No transactions</td></tr>';
+  tbody.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════
+function setView(view, btn) {
+  currentView = view;
+  document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildMainChart();
+}
+
+function filterLog(cohort, btn) {
+  logFilter = cohort;
+  document.querySelectorAll('.log-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildTransactionLog();
+}
+
+function updateDashboard() {
+  buildGrandTotal();
+  buildSummaryCards();
+  buildComparisonTable();
+  buildMainChart();
+  buildBarChart();
+  buildTxnChart();
+  buildLogFilters();
+  buildTransactionLog();
+  if (Object.keys(BROADCAST_DATA).length) {
+    buildEmailTable();
+  }
+}
+
+// ═══════════════════════════════════════════
+// PUBLIC PREVIEW BUILD — live API integrations stripped.
+// All data is loaded statically from cohort_data.json (synthetic, redacted).
+// ═══════════════════════════════════════════
+let serverHasApiKey = false;
+let serverHasKitKey = false;
+async function checkApiStatus() { return null; }
+async function fetchBroadcasts() { /* no-op */ }
+
+function buildEmailTable() {
+  const thead = document.getElementById('emailTableHead');
+  const tbody = document.getElementById('emailTableBody');
+  const cohorts = getActiveCohorts();
+  const cohortKeys = Object.keys(cohorts);
+
+  if (!cohortKeys.length) return;
+
+  // Build header: Day | Cohort 3 Email | C3 Revenue | Cohort 4 Email | C4 Revenue | ...
+  let headerHtml = '<tr><th class="day-label-col">Day</th>';
+  for (const key of cohortKeys) {
+    const c = cohorts[key];
+    headerHtml += `<th class="email-cell">${c.name} — Email</th>`;
+    headerHtml += `<th class="revenue-cell">${c.name} — Revenue</th>`;
+  }
+  headerHtml += '</tr>';
+  thead.innerHTML = headerHtml;
+
+  // Find the range of days across all cohorts (including early/late)
+  let minDay = 0, maxDay = 0;
+  for (const key of cohortKeys) {
+    const broadcasts = BROADCAST_DATA[key] || [];
+    const tl = buildExtendedTimeline(cohorts[key]);
+    if (tl.earlyDays.length > 0) minDay = Math.min(minDay, tl.earlyDays[0].dayLabel);
+    maxDay = Math.max(maxDay, cohorts[key].total_days);
+    if (tl.lateDays.length > 0) maxDay = Math.max(maxDay, tl.lateDays[tl.lateDays.length-1].dayLabel);
+    broadcasts.forEach(b => {
+      minDay = Math.min(minDay, b.day);
+      maxDay = Math.max(maxDay, b.day);
+    });
+  }
+
+  // Build day-indexed lookup for broadcasts and revenue
+  const emailsByDay = {};
+  const revenueByDay = {};
+  for (const key of cohortKeys) {
+    emailsByDay[key] = {};
+    revenueByDay[key] = {};
+
+    // Index broadcasts by day
+    (BROADCAST_DATA[key] || []).forEach(b => {
+      if (!emailsByDay[key][b.day]) emailsByDay[key][b.day] = [];
+      emailsByDay[key][b.day].push(b);
+    });
+
+    // Index revenue by day
+    const tl = buildExtendedTimeline(cohorts[key]);
+    tl.earlyDays.forEach(d => { revenueByDay[key][d.dayLabel] = d.revenue; });
+    tl.windowDays.forEach(d => { revenueByDay[key][d.dayLabel] = d.revenue; });
+    tl.lateDays.forEach(d => { revenueByDay[key][d.dayLabel] = d.revenue; });
+  }
+
+  // Only show rows where at least one cohort has an email or revenue
+  let bodyHtml = '';
+  for (let day = minDay; day <= maxDay; day++) {
+    // Check if this row has any data
+    let hasData = false;
+    for (const key of cohortKeys) {
+      if (emailsByDay[key][day] || (revenueByDay[key][day] && revenueByDay[key][day] > 0)) {
+        hasData = true; break;
+      }
+    }
+    if (!hasData) continue;
+
+    // Day label
+    let dayLabel;
+    if (day < 1) dayLabel = `<span style="color:var(--text-dim);font-style:italic;">Early ${day}</span>`;
+    else dayLabel = `Day ${day}`;
+
+    bodyHtml += `<tr><td class="day-label-col">${dayLabel}</td>`;
+
+    for (const key of cohortKeys) {
+      const emails = emailsByDay[key][day] || [];
+      const rev = revenueByDay[key][day] || 0;
+
+      if (emails.length > 0) {
+        let cellHtml = '';
+        emails.forEach(e => {
+          const link = e.public_url
+            ? `<a href="${e.public_url}" target="_blank">${escapeHtml(e.subject)}</a>`
+            : escapeHtml(e.subject);
+          const statsArr = [];
+          if (e.open_rate != null) statsArr.push(fmtPct(e.open_rate) + ' open');
+          if (e.click_rate != null) statsArr.push(fmtPct(e.click_rate) + ' click');
+          if (e.recipients != null) statsArr.push(e.recipients.toLocaleString() + ' sent');
+          cellHtml += `<div class="email-subject"><span class="email-icon">✉</span>${link}</div>`;
+          if (statsArr.length) cellHtml += `<div class="email-stats">${statsArr.join(' · ')}</div>`;
+        });
+        bodyHtml += `<td class="email-cell">${cellHtml}</td>`;
+      } else {
+        bodyHtml += `<td class="email-cell empty">—</td>`;
+      }
+
+      // Revenue cell
+      if (rev > 0) {
+        bodyHtml += `<td class="revenue-cell">${fmt$(Math.round(rev))}</td>`;
+      } else {
+        bodyHtml += `<td class="revenue-cell" style="color:var(--text-dim);">—</td>`;
+      }
+    }
+
+    bodyHtml += '</tr>';
+  }
+
+  if (!bodyHtml) bodyHtml = `<tr><td colspan="${1 + cohortKeys.length * 2}" style="text-align:center;color:var(--text-dim);padding:32px;">No email data to display</td></tr>`;
+  tbody.innerHTML = bodyHtml;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtPct(n) {
+  if (n == null) return '—';
+  return (n * 100).toFixed(1) + '%';
+}
+
+/**
+ * Build email annotation objects for Chart.js annotation plugin.
+ * Returns annotation config to merge into chart plugins.
+ */
+function buildEmailAnnotations(labels, windowStartIdx) {
+  if (!BROADCAST_DATA || !Object.keys(BROADCAST_DATA).length) return {};
+
+  const annotations = {};
+  const cohortKeys = Object.keys(getActiveCohorts());
+  const colorMap = {cohort_2:'#74b9ff', cohort_3:'#00b894', cohort_4:'#fdcb6e', cohort_5:'#e17055', current:'#6c5ce7'};
+
+  for (const key of cohortKeys) {
+    const broadcasts = BROADCAST_DATA[key] || [];
+    broadcasts.forEach((b, i) => {
+      // Map broadcast day to chart x-index
+      // Day 1 corresponds to windowStartIdx, Early days are before, Late after
+      const xIdx = windowStartIdx + (b.day - 1);
+      if (xIdx < 0 || xIdx >= labels.length) return;
+
+      const color = colorMap[key] || '#6c5ce7';
+      const id = `email_${key}_${i}`;
+
+      // Vertical dashed line at the email send point
+      annotations[id] = {
+        type: 'line',
+        xMin: xIdx,
+        xMax: xIdx,
+        borderColor: color + '60',
+        borderWidth: 1,
+        borderDash: [3, 3],
+        label: {
+          display: true,
+          content: '✉',
+          position: 'start',
+          backgroundColor: 'transparent',
+          color: color,
+          font: {size: 12},
+          padding: 2,
+        }
+      };
+    });
+  }
+
+  return annotations;
+}
+
+async function fetchLiveData() { /* no-op in public preview */ }
+
+// ═══════════════════════════════════════════
+// PINNED TOOLTIP (click chart → persistent overlay with email links)
+// ═══════════════════════════════════════════
+function showPinnedTooltip(chart, idx, points, isRev) {
+  const tooltip = document.getElementById('pinnedTooltip');
+  const label = _lastLabels[idx] || '';
+  const windowStartIdx = _lastWindowStartIdx;
+  const allCohorts = getActiveCohorts();
+  const cohortEntries = Object.entries(allCohorts);
+
+  // Build data rows
+  let dataHtml = '';
+  points.forEach(pt => {
+    const ds = chart.data.datasets[pt.datasetIndex];
+    const val = ds.data[idx];
+    if (val === null || val === undefined) return;
+    dataHtml += `<div class="pt-row"><span class="pt-label">${ds.label}:</span> <strong>${redactMode ? '•••' : isRev ? fmt$(val) : val}</strong></div>`;
+  });
+
+  // Build email links for this day
+  let emailHtml = '';
+  if (Object.keys(BROADCAST_DATA).length) {
+    for (const [key, broadcasts] of Object.entries(BROADCAST_DATA)) {
+      const cohortName = allCohorts[key]?.name || key;
+      (broadcasts || []).forEach(b => {
+        const xIdx = windowStartIdx + (b.day - 1);
+        if (xIdx === idx) {
+          const url = b.public_url || '#';
+          const statsArr = [];
+          if (b.open_rate != null) statsArr.push(fmtPct(b.open_rate) + ' open');
+          if (b.click_rate != null) statsArr.push(fmtPct(b.click_rate) + ' click');
+          if (b.recipients != null) statsArr.push(b.recipients.toLocaleString() + ' sent');
+          emailHtml += `<div class="pt-email">`;
+          emailHtml += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:2px;">${cohortName}</div>`;
+          if (b.public_url) {
+            emailHtml += `<a href="${b.public_url}" target="_blank">✉ ${escapeHtml(b.subject)}</a>`;
+          } else {
+            emailHtml += `<span style="color:var(--text);">✉ ${escapeHtml(b.subject)}</span>`;
+          }
+          if (statsArr.length) emailHtml += `<div class="pt-stats">${statsArr.join(' · ')}</div>`;
+          emailHtml += `</div>`;
+        }
+      });
+    }
+  }
+
+  if (!dataHtml && !emailHtml) { dismissPinnedTooltip(); return; }
+
+  tooltip.innerHTML = `
+    <button class="pt-close" onclick="dismissPinnedTooltip()">&times;</button>
+    <div class="pt-header">${label}</div>
+    ${dataHtml}
+    ${emailHtml}
+  `;
+
+  // Position near the clicked point
+  const chartArea = chart.chartArea;
+  const meta = chart.getDatasetMeta(points[0].datasetIndex);
+  const point = meta.data[idx];
+  const canvasRect = chart.canvas.getBoundingClientRect();
+  const containerRect = chart.canvas.parentElement.getBoundingClientRect();
+
+  let left = point.x + 16;
+  let top = point.y - 20;
+
+  // Keep tooltip inside the chart card
+  tooltip.style.display = 'block';
+  const ttRect = tooltip.getBoundingClientRect();
+  if (left + ttRect.width > containerRect.width - 20) {
+    left = point.x - ttRect.width - 16;
+  }
+  if (top + ttRect.height > containerRect.height - 10) {
+    top = containerRect.height - ttRect.height - 10;
+  }
+  if (top < 0) top = 10;
+
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+}
+
+function dismissPinnedTooltip() {
+  document.getElementById('pinnedTooltip').style.display = 'none';
+}
+
+// Dismiss pinned tooltip when clicking outside
+document.addEventListener('click', (e) => {
+  const tooltip = document.getElementById('pinnedTooltip');
+  if (tooltip && tooltip.style.display !== 'none') {
+    // Don't dismiss if clicking inside the tooltip itself
+    if (tooltip.contains(e.target)) return;
+    // Don't dismiss if clicking on the chart canvas (that will trigger a new tooltip)
+    if (e.target.tagName === 'CANVAS') return;
+    dismissPinnedTooltip();
+  }
+});
+
+// ═══════════════════════════════════════════
+// CLICK CHART DAY → SCROLL TO EMAIL
+// ═══════════════════════════════════════════
+function scrollToEmailDay(day) {
+  const section = document.getElementById('emailSection');
+  if (section.style.display === 'none') return;
+
+  // Find the row matching this day in the email table
+  const rows = document.querySelectorAll('#emailTableBody tr');
+  for (const row of rows) {
+    const dayCell = row.querySelector('.day-label-col');
+    if (!dayCell) continue;
+    const text = dayCell.textContent.trim();
+    if (text === 'Day ' + day || (day < 1 && text === 'Early ' + day)) {
+      row.scrollIntoView({behavior:'smooth', block:'center'});
+      row.style.transition = 'background 0.3s';
+      row.style.background = 'rgba(108,92,231,0.2)';
+      setTimeout(() => { row.style.background = ''; }, 2000);
+      return;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+async function init() {
+  // Restore saved revenue mode
+  const stored = getStoredMode();
+  if (stored === 'gross' || stored === 'net') {
+    revenueMode = stored;
+    document.querySelectorAll('#revenueModeToggle button').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === stored);
+    });
+  }
+
+  // All 6 cohorts are baked into cohort_data.json — single fast load
+  await loadData();
+}
+
+init();
+</script>
+</body>
+</html>
