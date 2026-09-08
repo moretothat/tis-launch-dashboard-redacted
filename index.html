@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Thinking In Stories — Launch Dashboard (Preview)</title>
+<title>[FAKE DATA DEMO] Thinking In Stories Launch Dashboard</title>
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/favicon.png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
@@ -85,6 +85,15 @@
   .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; flex-wrap:wrap; gap:16px; }
   .header h1 { font-size:24px; font-weight:700; letter-spacing:-0.5px; }
   .header h1 span { color:var(--accent); }
+
+  .fake-banner {
+    position:fixed; top:0; left:0; right:0; z-index:1000;
+    display:flex; align-items:center; gap:10px; justify-content:center;
+    background:#f59e0b; color:#1a1200; font-weight:700; font-size:13px;
+    letter-spacing:.3px; padding:10px 16px;
+    text-align:center; box-shadow:0 2px 10px rgba(0,0,0,.25);
+  }
+  .fake-banner strong { text-transform:uppercase; letter-spacing:.5px; }
 
   .api-section { display:flex; align-items:center; gap:8px; }
   .api-section input {
@@ -270,8 +279,10 @@
 </head>
 <body>
 
+<div class="fake-banner">⚠ <strong>Fake Data Demo</strong> — every name, email address, and dollar figure on this page is fabricated. No real customer data appears here.</div>
+
 <div class="header">
-  <h1>Thinking In Stories <span>Launch Dashboard</span></h1>
+  <h1>Thinking In Stories Launch Dashboard <span>(Fake Data Demo)</span></h1>
   <div class="api-section">
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">
       <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
@@ -284,7 +295,7 @@
       <button data-mode="net" onclick="setRevenueMode('net')">Net</button>
     </div>
     <span style="width:1px;height:20px;background:var(--border);margin:0 4px;"></span>
-    <span class="preview-badge" title="All names are initials and dollar amounts are scrambled within ±30% of true values. No real customer data is shipped to the browser.">Preview · synthetic data</span>
+    <span class="preview-badge" title="This is a public demo. All names, emails, and figures shown are synthetic — nothing here is real customer or revenue data.">Fake Data</span>
   </div>
 </div>
 
@@ -293,10 +304,10 @@
 
 <div class="comp-section">
   <div class="section-toggle" onclick="toggleSection('compBody','compToggleIcon')">
-    <span class="toggle-icon" id="compToggleIcon">&#9654;</span>
+    <span class="toggle-icon open" id="compToggleIcon">&#9654;</span>
     <h3>Cohort Comparison</h3>
   </div>
-  <div id="compBody" class="section-body collapsed" style="overflow-x:auto;">
+  <div id="compBody" class="section-body" style="overflow-x:auto;">
     <table class="comp-table" id="compTable"></table>
   </div>
 </div>
@@ -318,7 +329,7 @@
   <div class="chart-card"><h3>Transactions by Day</h3><canvas id="dailyTxnChart"></canvas></div>
 </div>
 
-<div class="email-table" id="emailSection" style="display:none;">
+<div class="email-table" id="emailSection">
   <div class="section-toggle" onclick="toggleSection('emailBody','emailToggleIcon')">
     <span class="toggle-icon open" id="emailToggleIcon">&#9654;</span>
     <h3 style="flex:1;">Launch Email Comparison</h3>
@@ -328,23 +339,6 @@
     <table>
       <thead id="emailTableHead"></thead>
       <tbody id="emailTableBody"></tbody>
-    </table>
-  </div>
-</div>
-
-<div class="transaction-log">
-  <div class="section-toggle" onclick="toggleSection('logBodyWrapper','logToggleIcon')">
-    <span class="toggle-icon open" id="logToggleIcon">&#9654;</span>
-    <h3>Transaction Log</h3>
-  </div>
-  <div id="logBodyWrapper" class="section-body">
-    <div class="log-filters" id="logFilters"></div>
-    <table class="log-table">
-      <thead><tr>
-        <th>Day</th><th>Date</th><th>Time</th><th>Cohort</th><th>Customer</th><th>Product</th>
-        <th>Initial</th><th>Rebill</th><th>Upgrade</th><th>Total Value</th>
-      </tr></thead>
-      <tbody id="logBody"></tbody>
     </table>
   </div>
 </div>
@@ -435,7 +429,7 @@ async function loadData(retries) {
           day: d.day, date: d.date, transactions: d.transactions, revenue: d.revenue,
           cumulative_transactions: d.cumulative_transactions, cumulative_revenue: d.cumulative_revenue,
           orders: d.orders.map(o => ({
-            name: o.name, product: o.product, initial_amount: o.initial_amount,
+            name: o.name, email: o.email, product: o.product, initial_amount: o.initial_amount,
             rebill_amount: o.rebill_amount, upgrade_amount: o.upgrade_amount,
             total_amount: o.total_amount, time: o.time,
             is_early_bird: o.is_early_bird, is_straggler: o.is_straggler
@@ -446,6 +440,9 @@ async function loadData(retries) {
         totals: cohort.totals
       };
     }
+    BROADCAST_DATA = data.broadcasts || {};
+    const totalEmails = Object.values(BROADCAST_DATA).reduce((s, arr) => s + arr.length, 0);
+    document.getElementById('emailStatus').textContent = totalEmails ? totalEmails + ' emails (sample data)' : '';
     updateDashboard();
   } catch(e) {
     console.error('Failed to load cohort_data.json:', e);
@@ -880,17 +877,16 @@ function initTheme() {
 }
 initTheme();
 
-let redactMode = false;
-function toggleRedact() {
-  redactMode = !redactMode;
-  document.body.classList.toggle('redacted', redactMode);
-  document.getElementById('redactToggle').classList.toggle('active', redactMode);
-  document.getElementById('redactCheck').textContent = redactMode ? '✓' : '';
-  // Rebuild charts so Y-axis ticks get redacted
-  buildMainChart();
-  buildBarChart();
-  buildTxnChart();
+function syncBannerOffset() {
+  const banner = document.querySelector('.fake-banner');
+  if (!banner) return;
+  document.body.style.paddingTop = (banner.offsetHeight + 24) + 'px';
 }
+syncBannerOffset();
+window.addEventListener('resize', syncBannerOffset);
+
+const redactMode = false;
+function toggleRedact() { /* not used in the fake-data demo build */ }
 
 function toggleSection(bodyId, iconId) {
   const body = document.getElementById(bodyId);
@@ -1252,8 +1248,6 @@ function updateDashboard() {
   buildMainChart();
   buildBarChart();
   buildTxnChart();
-  buildLogFilters();
-  buildTransactionLog();
   if (Object.keys(BROADCAST_DATA).length) {
     buildEmailTable();
   }
