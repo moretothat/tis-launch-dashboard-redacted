@@ -1,12 +1,12 @@
 {
-  "name": "tis-launch-dashboard-redacted",
+  "name": "tis-launch-dashboard-fake-data",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Thinking In Stories — Launch Dashboard, public preview (synthetic data)",
+  "description": "Thinking In Stories — Launch Dashboard, public fake-data demo",
   "scripts": {
     "redact": "node redact.mjs",
     "dev": "wrangler pages dev . --port 8789",
-    "deploy": "wrangler pages deploy ."
+    "deploy": "wrangler pages deploy . --project-name=tis-launch-dashboard-fake-data"
   }
 }
